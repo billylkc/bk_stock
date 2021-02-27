@@ -17,6 +17,34 @@ type StockPrice struct {
 	ChangesF string  // Percentage changes on Close. Formatted with +/- sign
 }
 
+// RecordExists checks if we have records for a particular date in the database
+// true if already exists
+func RecordExists(date string) bool {
+	db, err := db.GetConnection()
+	if err != nil {
+		return true
+	}
+	queryF := `
+    SELECT count(1) as cnt
+    FROM stock
+    WHERE date = '%s'`
+
+	query := fmt.Sprintf(queryF, date)
+	rows, err := db.Query(query)
+	defer rows.Close()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	var num int
+	for rows.Next() {
+		_ = rows.Scan(&num)
+	}
+	if num > 0 {
+		return true
+	}
+	return false // false as safe to insert
+}
+
 // GetStockPrice gets the historical stock price of a certain code
 func GetStockPrice(code int) ([]StockPrice, error) {
 	var result []StockPrice

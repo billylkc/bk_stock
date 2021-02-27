@@ -70,7 +70,7 @@ func (q *Quandl) GetStockByDate(date string) ([]HistoricalPrice, error) {
 		return result, err
 	}
 
-	companies = companies[0:10]
+	fmt.Printf("Getting date - %s - %d \n\n", date, len(companies))
 
 	var counter int
 	for _, code := range companies {
@@ -154,6 +154,7 @@ func (q *Quandl) Insert(data []HistoricalPrice) error {
 	if len(data) == 0 {
 		return errors.New("no records to be inserted")
 	}
+	fmt.Printf("Start inserting records - %d\n", len(data))
 
 	db, err := db.GetConnection()
 	if err != nil {
@@ -188,7 +189,7 @@ func (q *Quandl) Insert(data []HistoricalPrice) error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("Done")
 	return nil
 
 }

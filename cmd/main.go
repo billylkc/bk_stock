@@ -5,14 +5,15 @@ import (
 	"fmt"
 
 	"github.com/billylkc/stock/quandl"
+	"github.com/billylkc/stock/stock"
 )
 
 func main() {
-	getByDate()
+	dev()
 }
 
 func dev() {
-	quandl.Dev()
+	fmt.Println(stock.RecordExists("2021-02-26"))
 }
 
 func getStock() {

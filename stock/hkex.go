@@ -1,6 +1,7 @@
 package stock
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -17,7 +18,7 @@ type Company struct {
 }
 
 // GetCompanyName looks up company name from HKEX
-func GetCompanyName(c int) (Company, error) {
+func getcompanyname(c int) (Company, error) {
 	var result Company
 
 	// Handle input, e.g. code = 00005, date 2021-02-01
@@ -102,8 +103,15 @@ func GetCompanyList() ([]int, error) {
 			if err != nil { // ignore
 				fmt.Println(err.Error())
 			}
-			result = append(result, code)
+			if code < 10000 {
+				if code <= 8000 || code >= 9000 {
+					result = append(result, code)
+				}
+			}
 		}
 	})
+	if len(result) == 0 {
+		return result, errors.New("something wrong with the hkex company list")
+	}
 	return result, nil
 }
