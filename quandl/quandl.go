@@ -2,6 +2,7 @@ package quandl
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/gocarina/gocsv"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // HistoricalPrice as the struct for the API result
@@ -31,27 +33,34 @@ type HistoricalPrice struct {
 
 // Quandl
 type Quandl struct {
-	limit int
-	start string // not using start date right now
-	end   string
-	order string
+	logger *logrus.Logger
+	limit  int
+	start  string // not using start date right now
+	end    string
+	order  string
 }
 
 type option func(*Quandl)
 
 // New as Quandl constructor
-func New() Quandl {
+func New(logger *logrus.Logger) Quandl {
 	today := time.Now().Format("2006-01-02")
+
 	return Quandl{
-		limit: 10,
-		end:   today,
-		order: "desc",
+		logger: logger,
+		limit:  10,
+		end:    today,
+		order:  "desc",
 	}
 }
 
 // Dev for development
 func Dev() {
-	q := New()
+
+	logger := logrus.New()
+	logger.Out = io.Writer(os.Stdout)
+
+	q := New(logger)
 	res, _ := q.GetStock(5, "2021-02-21")
 	fmt.Println(res)
 }

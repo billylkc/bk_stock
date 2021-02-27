@@ -3,9 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/billylkc/stock/quandl"
-	"github.com/billylkc/stock/stock"
 )
 
 func main() {
@@ -13,29 +10,7 @@ func main() {
 }
 
 func dev() {
-	fmt.Println(stock.RecordExists("2021-02-26"))
-}
-
-func getStock() {
-	q := quandl.New()
-	code := 5
-	res, err := q.GetStockByCode(code)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Println(PrettyPrint(res))
-}
-
-func getByDate() {
-	q := quandl.New()
-	date := "2021-02-26"
-	res, err := q.GetStockByDate(date)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Println(PrettyPrint(res))
+	fmt.Println("Dev")
 }
 
 // PrettyPrint to print struct in a readable way

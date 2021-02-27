@@ -3,11 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
 	"github.com/billylkc/stock/quandl"
 	"github.com/billylkc/stock/stock"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -27,14 +29,21 @@ func main() {
 		os.Exit(0)
 	}
 
-	q := quandl.New()
+	// Setup logger
+	file, err := os.OpenFile("/var/log/stock.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	mw := io.MultiWriter(file, os.Stdout)
+	logger := logrus.New()
+	logger.Out = mw
+	logger.SetFormatter(&logrus.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
+
+	q := quandl.New(logger)
 	res, err := q.GetStockByDate(date)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 	}
 	err = q.Insert(res)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Error(err)
 	}
 
 }
