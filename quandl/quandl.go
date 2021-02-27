@@ -7,8 +7,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/billylkc/stock/db"
 	"github.com/billylkc/stock/stock"
 	"github.com/gocarina/gocsv"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +20,7 @@ type HistoricalPrice struct {
 	CodeF    string  `csv:"-"` // code in string format
 	Date     string  `csv:"Date"`
 	Ask      float64 `csv:"Ask"`
-	Big      float64 `csv:"Bid"`
+	Bid      float64 `csv:"Bid"`
 	Open     float64 `csv:"Previous Close"` // open is missing in quandl, using prev close
 	High     float64 `csv:"High"`
 	Low      float64 `csv:"Low"`
@@ -37,6 +39,23 @@ type Quandl struct {
 
 type option func(*Quandl)
 
+// New as Quandl constructor
+func New() Quandl {
+	today := time.Now().Format("2006-01-02")
+	return Quandl{
+		limit: 10,
+		end:   today,
+		order: "desc",
+	}
+}
+
+// Dev for development
+func Dev() {
+	q := New()
+	res, _ := q.GetStock(5, "2021-02-21")
+	fmt.Println(res)
+}
+
 // GetStockByCode is a wrapper to get all the historical dat a for a single stock
 func (q *Quandl) GetStockByCode(code int) ([]HistoricalPrice, error) {
 	return q.GetStock(code, "")
@@ -51,13 +70,23 @@ func (q *Quandl) GetStockByDate(date string) ([]HistoricalPrice, error) {
 		return result, err
 	}
 
-	companies = companies[0:30]
+	companies = companies[0:10]
+
+	var counter int
 	for _, code := range companies {
+
+		// Check for consecutive failures
+		if counter >= 20 {
+			return []HistoricalPrice{}, fmt.Errorf("Data not ready - %s", date)
+		}
+
 		fmt.Printf("(%s) Getting stock - %d", date, code)
 		data, err := q.GetStock(code, date)
 		if err != nil {
+			counter += 1
 			fmt.Printf(" - %v", err.Error())
 		} else {
+			counter = 0 // reset
 			result = append(result, data...)
 		}
 		fmt.Printf(" - %d records \n", len(data))
@@ -96,8 +125,8 @@ func (q *Quandl) GetStock(code int, date string) ([]HistoricalPrice, error) {
 	for i, _ := range data {
 		data[i].Code = code
 		data[i].CodeF = codeF
-		data[i].Volume = data[i].Volume * 100
-		data[i].Turnover = data[i].Turnover * 100
+		data[i].Volume = data[i].Volume * 1000
+		data[i].Turnover = data[i].Turnover * 1000
 	}
 
 	// Handle date logic
@@ -120,28 +149,55 @@ func (q *Quandl) GetStock(code int, date string) ([]HistoricalPrice, error) {
 	return result, nil
 }
 
+func (q *Quandl) Insert(data []HistoricalPrice) error {
+
+	if len(data) == 0 {
+		return errors.New("no records to be inserted")
+	}
+
+	db, err := db.GetConnection()
+	if err != nil {
+		return err
+	}
+
+	txn, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer txn.Commit()
+
+	stmt, err := txn.Prepare(pq.CopyIn("stock", "date", "ask", "bid", "open", "high", "low", "close", "volume", "turnover", "code"))
+	if err != nil {
+		return (err)
+	}
+
+	for _, model := range data {
+		_, err := stmt.Exec(model.Date, model.Ask, model.Bid, model.Open, model.High, model.Low, model.Close, model.Volume, model.Turnover, model.CodeF)
+		if err != nil {
+			txn.Rollback()
+			return err
+		}
+	}
+
+	_, err = stmt.Exec()
+	if err != nil {
+		return err
+	}
+
+	err = stmt.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
 // Option sets the options specified.
 func (q *Quandl) option(opts ...option) {
 	for _, opt := range opts {
 		opt(q)
 	}
-}
-
-// New as Quandl constructor
-func New() Quandl {
-	today := time.Now().Format("2006-01-02")
-	return Quandl{
-		limit: 10,
-		end:   today,
-		order: "desc",
-	}
-}
-
-// Dev for development
-func Dev() {
-	q := New()
-	res, _ := q.GetStock(5, "2021-02-21")
-	fmt.Println(res)
 }
 
 //getEndpoint gets the endpoint for the quandl api
