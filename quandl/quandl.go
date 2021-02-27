@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/billylkc/stock/stock"
 	"github.com/gocarina/gocsv"
 	"github.com/pkg/errors"
 )
@@ -36,13 +37,47 @@ type Quandl struct {
 
 type option func(*Quandl)
 
+// GetStockByCode is a wrapper to get all the historical dat a for a single stock
+func (q *Quandl) GetStockByCode(code int) ([]HistoricalPrice, error) {
+	return q.GetStock(code, "")
+}
+
+// GetStockByDate
+func (q *Quandl) GetStockByDate(date string) ([]HistoricalPrice, error) {
+	var result []HistoricalPrice
+
+	companies, err := stock.GetCompanyList()
+	if err != nil {
+		return result, err
+	}
+
+	companies = companies[0:30]
+	for _, code := range companies {
+		fmt.Printf("(%s) Getting stock - %d", date, code)
+		data, err := q.GetStock(code, date)
+		if err != nil {
+			fmt.Printf(" - %v", err.Error())
+		} else {
+			result = append(result, data...)
+		}
+		fmt.Printf(" - %d records \n", len(data))
+	}
+	return result, err
+}
+
 // GetStock is the underlying function to get the stock by different code and date settings
 func (q *Quandl) GetStock(code int, date string) ([]HistoricalPrice, error) {
 	var data []HistoricalPrice
 
-	// TODO: calc limit
-	q.option(setEndDate(date))
-	q.option(setLimit(11))
+	// Derive input
+	if date == "" {
+		today := time.Now().Format("2006-01-02")
+		q.option(setEndDate(today))
+		q.option(setLimit(10000))
+	} else {
+		q.option(setEndDate(date))
+		q.option(setLimit(10))
+	}
 
 	codeF := fmt.Sprintf("%05d", code)
 	endpoint, _ := q.getEndpoint(code)

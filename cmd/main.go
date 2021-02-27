@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	getStock()
+	getByDate()
 }
 
 func dev() {
@@ -18,8 +18,18 @@ func dev() {
 func getStock() {
 	q := quandl.New()
 	code := 5
+	res, err := q.GetStockByCode(code)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(PrettyPrint(res))
+}
+
+func getByDate() {
+	q := quandl.New()
 	date := "2021-02-26"
-	res, err := q.GetStock(code, date)
+	res, err := q.GetStockByDate(date)
 	if err != nil {
 		fmt.Println(err)
 	}
