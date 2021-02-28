@@ -1,24 +1,36 @@
 package main
 
 import (
-	"encoding/json"
+	"flag"
 	"fmt"
+	"time"
 
 	"github.com/billylkc/stock/stock"
 )
 
 func main() {
-	dev()
+	var (
+		date string // date in yyyy-mm-dd format
+	)
+	flag.StringVar(&date, "d", "", "date in yyyy-mm-dd format")
+	flag.Parse()
+
+	if date == "" {
+		date = time.Now().Format("2006-01-02") // default for today
+	}
+
+	getIndustry(date)
 }
 
-func dev() {
-	date := "2021-02-28"
+func getIndustry(date string) {
+
 	res, err := stock.GetIndustryDetails(date)
-	fmt.Println(res)
-}
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	err = stock.InsertIndustry(res)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
-// PrettyPrint to print struct in a readable way
-func PrettyPrint(i interface{}) string {
-	s, _ := json.MarshalIndent(i, "", "\t")
-	return string(s)
 }

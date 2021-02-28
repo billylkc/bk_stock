@@ -1,6 +1,7 @@
 package stock
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,11 +10,14 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/billylkc/stock/db"
 	"github.com/billylkc/stock/util"
+	"github.com/lib/pq"
 )
 
-// Industry details from aastock
+// Industry Overview from aastock
 type Industry struct {
+	Date      string
 	Sector    string
 	Industry  string
 	CodeF     string
@@ -29,25 +33,75 @@ type Industry struct {
 }
 
 // Gets all the sectors + industry code
-func GetIndustryDetails(date string) ([]Industry, error) {
+func GetIndustryOverview(date string) ([]Industry, error) {
 	var results []Industry
-	links, err := getIndustryLinks(date) // check dates
+
+	exist := db.RecordExists("industry", date)
+	if exist {
+		return results, fmt.Errorf("records exists in db - %s", date)
+	}
+
+	links, err := getIndustryLinks(date, 1) // check dates
 	if err != nil {
 		return results, err
 	}
 
 	for _, link := range links {
-		industry, _ := getIndustryDetails(link)
+		industry, _ := getIndustryOverview(date, link)
 		results = append(results, industry...)
 	}
 	return results, nil
 }
 
-// getIndustryDetail gets a single industry detail from aastock
-func getIndustryDetails(link string) ([]Industry, error) {
+// InsertIndustry inserts to the industry table
+func InsertIndustry(data []Industry) error {
+
+	if len(data) == 0 {
+		return errors.New("no records to be inserted")
+	}
+	fmt.Printf("Start inserting records - %d\n", len(data))
+
+	db, err := db.GetConnection()
+	if err != nil {
+		return err
+	}
+
+	txn, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer txn.Commit()
+
+	stmt, err := txn.Prepare(pq.CopyIn("industry", "date", "sector", "industry", "code", "close", "change", "changepct", "volume", "turnover", "pe", "pb", "yieldpct", "marketcap"))
+	if err != nil {
+		return (err)
+	}
+
+	for _, model := range data {
+		_, err := stmt.Exec(model.Date, model.Sector, model.Industry, model.CodeF, model.Close, model.Change, model.ChangePct, model.Volume, model.Turnover, model.PE, model.PB, model.YieldPct, model.MarketCap)
+		if err != nil {
+			txn.Rollback()
+			return err
+		}
+	}
+
+	_, err = stmt.Exec()
+	if err != nil {
+		return err
+	}
+
+	err = stmt.Close()
+	if err != nil {
+		return err
+	}
+	fmt.Println("Done")
+	return nil
+}
+
+// getIndustryOverview gets a single industry overview from aastock
+func getIndustryOverview(date, link string) ([]Industry, error) {
 
 	var result []Industry
-	fmt.Printf("Getting link - %s\n", link)
 
 	res, err := http.Get(link)
 	if err != nil {
@@ -116,6 +170,7 @@ func getIndustryDetails(link string) ([]Industry, error) {
 				marketCap, _ = util.ParseI(values[9])
 
 				rec := Industry{
+					Date:      date,
 					Sector:    sector,
 					Industry:  industry,
 					CodeF:     code,
@@ -138,7 +193,15 @@ func getIndustryDetails(link string) ([]Industry, error) {
 }
 
 // getIndustryLinks gets all the individual sector/industires links
-func getIndustryLinks(date string) ([]string, error) {
+func getIndustryLinks(date string, tab int) ([]string, error) {
+	// tab reference
+	// 1 - Overview
+	// 2 - Range
+	// 3 - Performance
+	// 4 - Financial Ratio
+	// 5 - Banking Ratio (Blank)
+	// 6 - Earnings
+
 	var links []string
 
 	// Check if data is ready
@@ -162,7 +225,7 @@ func getIndustryLinks(date string) ([]string, error) {
 	for _, match := range matches {
 		if len(match) >= 2 {
 			industryCode := match[1]
-			link := fmt.Sprintf("http://www.aastocks.com/en/stocks/market/industry/sector-industry-details.aspx?industrysymbol=%s&t=1&s=&o=&p=", industryCode)
+			link := fmt.Sprintf("http://www.aastocks.com/en/stocks/market/industry/sector-industry-details.aspx?industrysymbol=%s&t=%d&s=&o=&p=", industryCode, tab)
 
 			links = append(links, link)
 		}
@@ -186,7 +249,9 @@ func checkIndustryAvailability(date string) bool {
 
 	// TODO: better checking later
 	var b bool
-	if string(matched[0][1]) == date {
+	web := string(matched[0][1]) // date on website, e.g. 2021/02/26
+	web = strings.ReplaceAll(web, "/", "-")
+	if date == web {
 		b = true
 	} else {
 		b = false
