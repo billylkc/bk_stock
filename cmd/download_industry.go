@@ -24,7 +24,7 @@ func main() {
 
 func getIndustry(date string) {
 
-	res, err := stock.GetIndustryDetails(date)
+	res, err := stock.GetIndustryOverview(date)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
