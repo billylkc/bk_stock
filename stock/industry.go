@@ -205,7 +205,7 @@ func getIndustryLinks(date string, tab int) ([]string, error) {
 	var links []string
 
 	// Check if data is ready
-	dataReady := checkIndustryAvailability(date)
+	dataReady := util.CheckWebsiteDate(date)
 	if !dataReady {
 		return links, fmt.Errorf("data not ready - %s", date)
 	}
@@ -231,30 +231,4 @@ func getIndustryLinks(date string, tab int) ([]string, error) {
 		}
 	}
 	return links, nil
-}
-
-// checkIndustryAvailability checks the date from the sector page and see if it matches the input date
-func checkIndustryAvailability(date string) bool {
-	res, err := http.Get("http://www.aastocks.com/en/stocks/market/industry/sector-industry-details.aspx?industrysymbol=2033&t=1&hk=0")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	re := regexp.MustCompile(`.*Last Update:\s*(\d{4}\/\d{2}\/\d{2})`)
-	matched := re.FindAllSubmatch(body, -1)
-
-	// TODO: better checking later
-	var b bool
-	web := string(matched[0][1]) // date on website, e.g. 2021/02/26
-	web = strings.ReplaceAll(web, "/", "-")
-	if date == web {
-		b = true
-	} else {
-		b = false
-	}
-	return b
 }

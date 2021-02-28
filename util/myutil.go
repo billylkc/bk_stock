@@ -3,6 +3,10 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -75,4 +79,30 @@ func ParseI(s string) (int, error) {
 	}
 
 	return num, nil
+}
+
+// CheckWebsiteDate checks the date from the aastock page and see if it matches the input date
+func CheckWebsiteDate(date string) bool {
+	res, err := http.Get("http://www.aastocks.com/en/stocks/market/industry/industry-performance.aspx")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	re := regexp.MustCompile(`.*Last Update:\s*(\d{4}\/\d{2}\/\d{2})`)
+	matched := re.FindAllSubmatch(body, -1)
+
+	// TODO: better checking later
+	var b bool
+	web := string(matched[0][1]) // date on website, e.g. 2021/02/26
+	web = strings.ReplaceAll(web, "/", "-")
+	if date == web {
+		b = true
+	} else {
+		b = false
+	}
+	return b
 }
