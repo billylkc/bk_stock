@@ -37,6 +37,7 @@ func main() {
 	logger.SetFormatter(&logrus.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
 
 	q := quandl.New(logger)
+	logger.Info(fmt.Sprintf("Start getting stock - %s", date))
 	res, err := q.GetStockByDate(date)
 	if err != nil {
 		logger.Error(err)
