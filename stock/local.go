@@ -1,6 +1,4 @@
-// package to retrieve records being stored in local databases
-
-package local
+package stock
 
 import (
 	"fmt"

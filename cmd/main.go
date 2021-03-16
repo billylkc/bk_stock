@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/billylkc/stock/local"
+	"github.com/billylkc/stock"
 )
 
 func main() {
-	res, err := local.GetStockPrice(5)
+	res, err := stock.GetStockPrice(5)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
