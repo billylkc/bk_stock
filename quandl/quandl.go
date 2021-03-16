@@ -93,7 +93,7 @@ func (q *Quandl) GetStockByDate(date string) ([]HistoricalPrice, error) {
 		data, err := q.GetStock(code, date)
 		if err != nil {
 			counter += 1
-			fmt.Printf(" - %v", err.Error())
+			// fmt.Printf("Error - %v \n", err)
 		} else {
 			counter = 0 // reset
 			result = append(result, data...)
@@ -128,6 +128,7 @@ func (q *Quandl) GetStock(code int, date string) ([]HistoricalPrice, error) {
 	body, err := ioutil.ReadAll(response.Body)
 
 	if err := gocsv.UnmarshalBytes(body, &data); err != nil {
+		q.logger.Error("unable to unmarshal the response")
 		return data, errors.New("unable to unmarshal the response")
 	}
 

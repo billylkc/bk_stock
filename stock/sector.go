@@ -35,6 +35,11 @@ func GetSectorOveriew(date string) ([]Sector, error) {
 	var results []Sector
 	link := "http://www.aastocks.com/en/stocks/market/industry/industry-performance.aspx"
 
+	exist := db.RecordExists("sector", date)
+	if exist {
+		return results, fmt.Errorf("records exists in db - %s", date)
+	}
+
 	// Check if data is ready
 	dataReady := util.CheckWebsiteDate(date)
 	if !dataReady {
